@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { MapContainer, TileLayer, Marker, Popup, Polyline, useMapEvents, useMap } from "react-leaflet";
 import L from "leaflet";
 import type { LatLon } from "@/lib/providers/types";
@@ -51,6 +51,48 @@ function ClickHandler({ onMapClick }: { onMapClick: (location: LatLon) => void }
   return null;
 }
 
+interface RainviewerFrame {
+  path: string;
+}
+
+interface RainviewerResponse {
+  host: string;
+  radar: { past: RainviewerFrame[] };
+}
+
+/** Current precipitation radar, composited from RainViewer's free public tile API. */
+function RadarLayer() {
+  const [tileUrl, setTileUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("https://api.rainviewer.com/public/weather-maps.json")
+      .then((res) => res.json())
+      .then((data: RainviewerResponse) => {
+        const latest = data.radar.past.at(-1);
+        if (!cancelled && latest) {
+          setTileUrl(`${data.host}${latest.path}/256/{z}/{x}/{y}/2/1_1.png`);
+        }
+      })
+      .catch(() => {
+        // Radar is a non-essential overlay; silently skip it on failure.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  if (!tileUrl) return null;
+
+  return (
+    <TileLayer
+      attribution='Radar &copy; <a href="https://www.rainviewer.com/">RainViewer</a>'
+      url={tileUrl}
+      opacity={0.5}
+    />
+  );
+}
+
 function FitBounds({ points }: { points: LatLon[] }) {
   const map = useMap();
   useEffect(() => {
@@ -72,6 +114,7 @@ export function MapView({ origin, destination, routeGeometry, stops, onMapClick,
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
+      <RadarLayer />
       <ClickHandler onMapClick={onMapClick} />
       {boundsPoints.length > 1 && <FitBounds points={boundsPoints} />}
 
