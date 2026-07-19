@@ -9,27 +9,22 @@ export interface SampledPoint {
 }
 
 export interface SampleRouteOptions {
-  /** Target spacing between samples, in seconds of drive time. Default: 15 minutes. */
-  intervalSeconds?: number;
-  /** Hard cap on how many samples (including origin and destination) get produced,
-   * so a long route doesn't fire a weather lookup per point. Default: 10. */
+  /** How many points to produce along the route, including origin and destination. Default: 20. */
   maxSamples?: number;
 }
 
-const DEFAULT_INTERVAL_SECONDS = 15 * 60;
-const DEFAULT_MAX_SAMPLES = 10;
+const DEFAULT_MAX_SAMPLES = 20;
 
 /**
- * Picks evenly time-spaced points along a route (always including origin and
- * destination) and attaches each one's ETA given a departure time. Pure and
- * network-free so it's unit-testable against a fixture route.
+ * Picks `maxSamples` evenly time-spaced points along a route (always including
+ * origin and destination) and attaches each one's ETA given a departure time.
+ * Pure and network-free so it's unit-testable against a fixture route.
  */
 export function sampleRoute(
   route: NormalizedRoute,
   departureTime: Date,
   options: SampleRouteOptions = {},
 ): SampledPoint[] {
-  const intervalSeconds = options.intervalSeconds ?? DEFAULT_INTERVAL_SECONDS;
   const maxSamples = options.maxSamples ?? DEFAULT_MAX_SAMPLES;
   const totalDuration = route.durationSeconds;
 
@@ -48,16 +43,11 @@ export function sampleRoute(
     ];
   }
 
-  // Spread samples evenly if the requested interval would exceed the cap.
-  const intervalCount = Math.floor(totalDuration / intervalSeconds) + 1;
-  const effectiveInterval =
-    intervalCount > maxSamples ? totalDuration / (maxSamples - 1) : intervalSeconds;
-
-  const targets: number[] = [];
-  for (let t = 0; t < totalDuration; t += effectiveInterval) {
-    targets.push(t);
-  }
-  targets.push(totalDuration);
+  // Index-based math (rather than repeated addition) keeps the count exact
+  // regardless of floating-point drift, and guarantees the first/last targets
+  // land on exactly 0 and totalDuration.
+  const count = Math.max(2, maxSamples);
+  const targets = Array.from({ length: count }, (_, i) => (i * totalDuration) / (count - 1));
 
   return targets.map((targetSeconds) => {
     if (targetSeconds <= 0) {

@@ -6,6 +6,7 @@ import L from "leaflet";
 import type { LatLon } from "@/lib/providers/types";
 import type { StopWithWeather } from "./types";
 import { describeWeatherCode, type WeatherCategory } from "@/lib/weatherCodes";
+import { formatTemperature, type TemperatureUnit } from "@/lib/units";
 
 // Leaflet's default marker icon references image paths that bundlers rewrite
 // unreliably, so every marker here uses an inline divIcon instead of L.icon.
@@ -38,6 +39,7 @@ interface MapViewProps {
   routeGeometry: LatLon[];
   stops: StopWithWeather[];
   onMapClick: (location: LatLon) => void;
+  unit: TemperatureUnit;
 }
 
 function ClickHandler({ onMapClick }: { onMapClick: (location: LatLon) => void }) {
@@ -61,7 +63,7 @@ function FitBounds({ points }: { points: LatLon[] }) {
 
 const DEFAULT_CENTER: [number, number] = [39.8283, -98.5795]; // roughly center of the contiguous US
 
-export function MapView({ origin, destination, routeGeometry, stops, onMapClick }: MapViewProps) {
+export function MapView({ origin, destination, routeGeometry, stops, onMapClick, unit }: MapViewProps) {
   const boundsPoints = routeGeometry.length > 0 ? routeGeometry : [origin, destination].filter(Boolean) as LatLon[];
 
   return (
@@ -104,7 +106,7 @@ export function MapView({ origin, destination, routeGeometry, stops, onMapClick 
               {stop.weather ? (
                 <>
                   <div>{describeWeatherCode(stop.weather.weatherCode).label}</div>
-                  <div>{Math.round(stop.weather.temperatureC)}&deg;C</div>
+                  <div>{formatTemperature(stop.weather.temperatureC, unit)}</div>
                   <div>{stop.weather.precipitationMm} mm precip</div>
                   <div>{Math.round(stop.weather.windSpeedKmh)} km/h wind</div>
                 </>
