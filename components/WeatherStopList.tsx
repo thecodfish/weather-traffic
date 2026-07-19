@@ -2,12 +2,14 @@
 
 import type { StopWithWeather } from "./types";
 import { describeWeatherCode, WEATHER_CATEGORY_STYLES } from "@/lib/weatherCodes";
+import { formatTemperature, type TemperatureUnit } from "@/lib/units";
 
 interface WeatherStopListProps {
   stops: StopWithWeather[];
+  unit: TemperatureUnit;
 }
 
-export function WeatherStopList({ stops }: WeatherStopListProps) {
+export function WeatherStopList({ stops, unit }: WeatherStopListProps) {
   if (stops.length === 0) return null;
 
   return (
@@ -41,7 +43,7 @@ export function WeatherStopList({ stops }: WeatherStopListProps) {
             <div className="text-right">
               {stop.weather ? (
                 <>
-                  <div className="font-semibold">{Math.round(stop.weather.temperatureC)}&deg;C</div>
+                  <div className="font-semibold">{formatTemperature(stop.weather.temperatureC, unit)}</div>
                   <div className="text-xs">{info?.label}</div>
                 </>
               ) : stop.weatherError ? (

@@ -7,6 +7,11 @@ import { WeatherStopList } from "@/components/WeatherStopList";
 import type { StopWithWeather } from "@/components/types";
 import { sampleRoute } from "@/lib/sampleRoute";
 import type { GeocodeResult, LatLon, NormalizedRoute } from "@/lib/providers/types";
+import type { TemperatureUnit } from "@/lib/units";
+
+const MIN_STOPS = 2;
+const MAX_STOPS = 20;
+const DEFAULT_STOPS = 10;
 
 const MapView = dynamic(() => import("@/components/MapView").then((m) => m.MapView), {
   ssr: false,
@@ -26,6 +31,8 @@ export default function Home() {
   const [origin, setOrigin] = useState<LatLon | null>(null);
   const [destination, setDestination] = useState<LatLon | null>(null);
   const [departureValue, setDepartureValue] = useState(() => toDatetimeLocalValue(new Date()));
+  const [maxStops, setMaxStops] = useState(DEFAULT_STOPS);
+  const [unit, setUnit] = useState<TemperatureUnit>("F");
   const [route, setRoute] = useState<NormalizedRoute | null>(null);
   const [stops, setStops] = useState<StopWithWeather[]>([]);
   const [isPlanning, setIsPlanning] = useState(false);
@@ -83,7 +90,7 @@ export default function Home() {
       setRoute(normalizedRoute);
 
       const departureTime = new Date(departureValue);
-      const sampled = sampleRoute(normalizedRoute, departureTime);
+      const sampled = sampleRoute(normalizedRoute, departureTime, { maxSamples: maxStops });
       setStops(sampled);
 
       const withWeather = await Promise.all(
@@ -153,6 +160,44 @@ export default function Home() {
           />
         </div>
 
+        <div className="flex gap-4">
+          <div className="flex-1">
+            <label className="block text-sm font-medium text-slate-700">
+              Number of stops ({MIN_STOPS}–{MAX_STOPS})
+            </label>
+            <input
+              type="number"
+              min={MIN_STOPS}
+              max={MAX_STOPS}
+              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+              value={maxStops}
+              onChange={(e) => {
+                const parsed = parseInt(e.target.value, 10);
+                if (Number.isNaN(parsed)) return;
+                setMaxStops(Math.min(MAX_STOPS, Math.max(MIN_STOPS, parsed)));
+              }}
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-700">Units</label>
+            <div className="mt-1 flex overflow-hidden rounded-md border border-slate-300">
+              {(["F", "C"] as const).map((option) => (
+                <button
+                  key={option}
+                  type="button"
+                  onClick={() => setUnit(option)}
+                  className={`px-3 py-2 text-sm font-medium ${
+                    unit === option ? "bg-blue-600 text-white" : "bg-white text-slate-600 hover:bg-slate-50"
+                  }`}
+                >
+                  °{option}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
         <div className="flex gap-2">
           <button
             type="button"
@@ -184,7 +229,7 @@ export default function Home() {
           </div>
         )}
 
-        <WeatherStopList stops={stops} />
+        <WeatherStopList stops={stops} unit={unit} />
       </aside>
 
       <main className="h-96 flex-1 overflow-hidden rounded-lg border border-slate-200 lg:h-full">
@@ -194,6 +239,7 @@ export default function Home() {
           routeGeometry={routeGeometry}
           stops={stops}
           onMapClick={handleMapClick}
+          unit={unit}
         />
       </main>
     </div>
