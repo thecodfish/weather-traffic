@@ -11,7 +11,7 @@ import type { TemperatureUnit } from "@/lib/units";
 
 const MIN_STOPS = 2;
 const MAX_STOPS = 20;
-const DEFAULT_STOPS = 10;
+const DEFAULT_STOPS = 20;
 
 const MapView = dynamic(() => import("@/components/MapView").then((m) => m.MapView), {
   ssr: false,

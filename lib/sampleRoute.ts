@@ -9,11 +9,11 @@ export interface SampledPoint {
 }
 
 export interface SampleRouteOptions {
-  /** How many points to produce along the route, including origin and destination. Default: 10. */
+  /** How many points to produce along the route, including origin and destination. Default: 20. */
   maxSamples?: number;
 }
 
-const DEFAULT_MAX_SAMPLES = 10;
+const DEFAULT_MAX_SAMPLES = 20;
 
 /**
  * Picks `maxSamples` evenly time-spaced points along a route (always including
