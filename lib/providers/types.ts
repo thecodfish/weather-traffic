@@ -44,3 +44,15 @@ export interface GeocodeResult {
 export interface GeocodingProvider {
   search(query: string): Promise<GeocodeResult[]>;
 }
+
+export interface ParsedRouteLink {
+  origin: LatLon;
+  originLabel: string;
+  destination: LatLon;
+  destinationLabel: string;
+}
+
+export interface MapsLinkProvider {
+  /** Resolves a shared Google Maps directions link (short or full URL) to origin/destination coordinates. */
+  parseRouteLink(url: string): Promise<ParsedRouteLink>;
+}

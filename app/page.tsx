@@ -3,10 +3,11 @@
 import dynamic from "next/dynamic";
 import { useMemo, useState } from "react";
 import { AddressAutocomplete } from "@/components/AddressAutocomplete";
+import { MapsLinkInput } from "@/components/MapsLinkInput";
 import { WeatherStopList } from "@/components/WeatherStopList";
 import type { StopWithWeather } from "@/components/types";
 import { sampleRoute } from "@/lib/sampleRoute";
-import type { GeocodeResult, LatLon, NormalizedRoute } from "@/lib/providers/types";
+import type { GeocodeResult, LatLon, NormalizedRoute, ParsedRouteLink } from "@/lib/providers/types";
 import type { TemperatureUnit } from "@/lib/units";
 
 const MIN_STOPS = 2;
@@ -48,6 +49,13 @@ export default function Home() {
   function handleSelectDestination(result: GeocodeResult) {
     setDestination(result.location);
     setDestinationQuery(result.label);
+  }
+
+  function handleMapsLinkResolved(result: ParsedRouteLink) {
+    setOrigin(result.origin);
+    setOriginQuery(result.originLabel);
+    setDestination(result.destination);
+    setDestinationQuery(result.destinationLabel);
   }
 
   function handleMapClick(location: LatLon) {
@@ -149,6 +157,8 @@ export default function Home() {
           onSelect={handleSelectDestination}
           selectedLocation={destination}
         />
+
+        <MapsLinkInput onResolved={handleMapsLinkResolved} />
 
         <div>
           <label className="block text-sm font-medium text-slate-700">Departure time</label>
