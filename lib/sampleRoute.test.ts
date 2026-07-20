@@ -110,7 +110,25 @@ describe("sampleRoute", () => {
 
     const samples = sampleRoute(route, departure);
     expect(samples).toEqual([
-      { location: { lat: 1, lon: 1 }, etaOffsetSeconds: 0, eta: departure, cumulativeDistanceMeters: 0 },
+      {
+        location: { lat: 1, lon: 1 },
+        etaOffsetSeconds: 0,
+        eta: departure,
+        cumulativeDistanceMeters: 0,
+        stepIndex: -1,
+      },
     ]);
+  });
+
+  it("exposes an increasing stepIndex per sample, matching route.steps", () => {
+    const route = fixtureRoute();
+    const departure = new Date("2026-07-19T12:00:00Z");
+    const samples = sampleRoute(route, departure, { maxSamples: 5 });
+
+    expect(samples[0].stepIndex).toBe(-1);
+    for (let i = 1; i < samples.length; i++) {
+      expect(samples[i].stepIndex).toBeGreaterThan(samples[i - 1].stepIndex);
+      expect(route.steps[samples[i].stepIndex].location).toEqual(samples[i].location);
+    }
   });
 });

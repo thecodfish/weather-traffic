@@ -4,10 +4,11 @@ import dynamic from "next/dynamic";
 import { useMemo, useState } from "react";
 import { AddressAutocomplete } from "@/components/AddressAutocomplete";
 import { MapsLinkInput } from "@/components/MapsLinkInput";
-import { WeatherStopList } from "@/components/WeatherStopList";
-import type { StopWithWeather } from "@/components/types";
+import { WeatherLegList } from "@/components/WeatherLegList";
+import { groupIntoLegs } from "@/lib/groupIntoLegs";
+import { buildLegPolylineSegments } from "@/lib/legPolylineSegments";
 import { mapWithConcurrency } from "@/lib/mapWithConcurrency";
-import { sampleRoute, type SampledPoint } from "@/lib/sampleRoute";
+import { sampleRoute, type SampledPoint, type StopWithWeather } from "@/lib/sampleRoute";
 import type { GeocodeResult, LatLon, NormalizedRoute, ParsedRouteLink } from "@/lib/providers/types";
 import type { TemperatureUnit } from "@/lib/units";
 
@@ -141,6 +142,8 @@ export default function Home() {
   }
 
   const routeGeometry = useMemo(() => route?.geometry ?? [], [route]);
+  const legs = useMemo(() => groupIntoLegs(stops), [stops]);
+  const legSegments = useMemo(() => (route ? buildLegPolylineSegments(route, legs) : []), [route, legs]);
 
   return (
     <div className="flex flex-col gap-4 p-4 lg:h-screen lg:flex-row lg:overflow-hidden">
@@ -250,7 +253,7 @@ export default function Home() {
           </div>
         )}
 
-        <WeatherStopList stops={stops} unit={unit} />
+        <WeatherLegList legs={legs} unit={unit} />
       </aside>
 
       <main className="h-96 overflow-hidden rounded-lg border border-slate-200 lg:h-full lg:flex-1">
@@ -258,7 +261,8 @@ export default function Home() {
           origin={origin}
           destination={destination}
           routeGeometry={routeGeometry}
-          stops={stops}
+          legs={legs}
+          legSegments={legSegments}
           onMapClick={handleMapClick}
           unit={unit}
         />

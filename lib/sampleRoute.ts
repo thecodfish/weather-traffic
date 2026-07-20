@@ -1,4 +1,4 @@
-import type { LatLon, NormalizedRoute } from "./providers/types";
+import type { LatLon, NormalizedRoute, NormalizedWeather } from "./providers/types";
 
 export interface SampledPoint {
   location: LatLon;
@@ -6,6 +6,13 @@ export interface SampledPoint {
   etaOffsetSeconds: number;
   eta: Date;
   cumulativeDistanceMeters: number;
+  /** Index into route.steps this sample resolved to, or -1 for the route's origin point. */
+  stepIndex: number;
+}
+
+export interface StopWithWeather extends SampledPoint {
+  weather?: NormalizedWeather;
+  weatherError?: string;
 }
 
 export interface SampleRouteOptions {
@@ -39,6 +46,7 @@ export function sampleRoute(
         etaOffsetSeconds: 0,
         eta: departureTime,
         cumulativeDistanceMeters: 0,
+        stepIndex: -1,
       },
     ];
   }
@@ -56,24 +64,24 @@ export function sampleRoute(
         etaOffsetSeconds: 0,
         eta: departureTime,
         cumulativeDistanceMeters: 0,
+        stepIndex: -1,
       };
     }
 
-    const step = findStepAtOrAfter(route.steps, targetSeconds);
+    const stepIndex = findStepIndexAtOrAfter(route.steps, targetSeconds);
+    const step = route.steps[stepIndex];
     return {
       location: step.location,
       etaOffsetSeconds: step.cumulativeDurationSeconds,
       eta: new Date(departureTime.getTime() + step.cumulativeDurationSeconds * 1000),
-      cumulativeDistanceMeters: cumulativeDistanceThrough(route.steps, step),
+      cumulativeDistanceMeters: cumulativeDistanceThrough(route.steps, stepIndex),
+      stepIndex,
     };
   });
 }
 
-/** Binary search for the first step whose cumulative duration reaches targetSeconds. */
-function findStepAtOrAfter(
-  steps: NormalizedRoute["steps"],
-  targetSeconds: number,
-): NormalizedRoute["steps"][number] {
+/** Binary search for the index of the first step whose cumulative duration reaches targetSeconds. */
+function findStepIndexAtOrAfter(steps: NormalizedRoute["steps"], targetSeconds: number): number {
   let lo = 0;
   let hi = steps.length - 1;
   while (lo < hi) {
@@ -84,17 +92,13 @@ function findStepAtOrAfter(
       lo = mid + 1;
     }
   }
-  return steps[lo];
+  return lo;
 }
 
-function cumulativeDistanceThrough(
-  steps: NormalizedRoute["steps"],
-  target: NormalizedRoute["steps"][number],
-): number {
+function cumulativeDistanceThrough(steps: NormalizedRoute["steps"], targetIndex: number): number {
   let total = 0;
-  for (const step of steps) {
-    total += step.distanceMeters;
-    if (step === target) break;
+  for (let i = 0; i <= targetIndex; i++) {
+    total += steps[i].distanceMeters;
   }
   return total;
 }

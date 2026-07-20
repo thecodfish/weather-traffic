@@ -4,9 +4,11 @@ import { useEffect, useState } from "react";
 import { MapContainer, TileLayer, Marker, Popup, Polyline, useMapEvents, useMap } from "react-leaflet";
 import L from "leaflet";
 import type { LatLon } from "@/lib/providers/types";
-import type { StopWithWeather } from "./types";
-import { describeWeatherCode, type WeatherCategory } from "@/lib/weatherCodes";
-import { formatTemperature, type TemperatureUnit } from "@/lib/units";
+import type { WeatherLeg } from "@/lib/groupIntoLegs";
+import type { LegPolylineSegment } from "@/lib/legPolylineSegments";
+import type { WeatherCategory } from "@/lib/weatherCodes";
+import { formatTemperatureRange, type TemperatureUnit } from "@/lib/units";
+import { formatEtaTime, formatMiles } from "@/lib/format";
 
 // Leaflet's default marker icon references image paths that bundlers rewrite
 // unreliably, so every marker here uses an inline divIcon instead of L.icon.
@@ -21,7 +23,6 @@ function dotIcon(color: string, size = 16) {
 
 const originIcon = dotIcon("#16a34a");
 const destinationIcon = dotIcon("#dc2626");
-const loadingStopIcon = dotIcon("#94a3b8", 12);
 
 const CATEGORY_COLORS: Record<WeatherCategory, string> = {
   clear: "#f59e0b",
@@ -37,7 +38,8 @@ interface MapViewProps {
   origin: LatLon | null;
   destination: LatLon | null;
   routeGeometry: LatLon[];
-  stops: StopWithWeather[];
+  legs: WeatherLeg[];
+  legSegments: LegPolylineSegment[];
   onMapClick: (location: LatLon) => void;
   unit: TemperatureUnit;
 }
@@ -123,9 +125,14 @@ function FitBounds({ points }: { points: LatLon[] }) {
   return null;
 }
 
+/** Middle stop of a leg, used to place its marker away from the leg boundaries. */
+function midpointStop(leg: WeatherLeg) {
+  return leg.stops[Math.floor((leg.stops.length - 1) / 2)];
+}
+
 const DEFAULT_CENTER: [number, number] = [39.8283, -98.5795]; // roughly center of the contiguous US
 
-export function MapView({ origin, destination, routeGeometry, stops, onMapClick, unit }: MapViewProps) {
+export function MapView({ origin, destination, routeGeometry, legs, legSegments, onMapClick, unit }: MapViewProps) {
   const boundsPoints = routeGeometry.length > 0 ? routeGeometry : [origin, destination].filter(Boolean) as LatLon[];
 
   return (
@@ -139,9 +146,19 @@ export function MapView({ origin, destination, routeGeometry, stops, onMapClick,
       <ClickHandler onMapClick={onMapClick} />
       {boundsPoints.length > 1 && <FitBounds points={boundsPoints} />}
 
-      {routeGeometry.length > 1 && (
+      {legSegments.length > 0 ? (
+        legSegments.map((segment, i) =>
+          segment.positions.length > 1 ? (
+            <Polyline
+              key={i}
+              positions={segment.positions.map((p) => [p.lat, p.lon])}
+              pathOptions={{ color: CATEGORY_COLORS[segment.category], weight: 5 }}
+            />
+          ) : null,
+        )
+      ) : routeGeometry.length > 1 ? (
         <Polyline positions={routeGeometry.map((p) => [p.lat, p.lon])} pathOptions={{ color: "#2563eb", weight: 4 }} />
-      )}
+      ) : null}
 
       {origin && (
         <Marker position={[origin.lat, origin.lon]} icon={originIcon}>
@@ -154,35 +171,26 @@ export function MapView({ origin, destination, routeGeometry, stops, onMapClick,
         </Marker>
       )}
 
-      {stops.map((stop, i) => (
-        <Marker
-          key={i}
-          position={[stop.location.lat, stop.location.lon]}
-          icon={
-            stop.weather
-              ? dotIcon(CATEGORY_COLORS[describeWeatherCode(stop.weather.weatherCode).category], 14)
-              : loadingStopIcon
-          }
-        >
-          <Popup>
-            <div className="text-sm text-slate-900">
-              <div className="font-semibold">ETA {stop.eta.toLocaleString()}</div>
-              {stop.weather ? (
-                <>
-                  <div>{describeWeatherCode(stop.weather.weatherCode).label}</div>
-                  <div>{formatTemperature(stop.weather.temperatureC, unit)}</div>
-                  <div>{stop.weather.precipitationMm} mm precip</div>
-                  <div>{Math.round(stop.weather.windSpeedKmh)} km/h wind</div>
-                </>
-              ) : stop.weatherError ? (
-                <div className="text-red-600">Weather unavailable: {stop.weatherError}</div>
-              ) : (
-                <div>Loading weather…</div>
-              )}
-            </div>
-          </Popup>
-        </Marker>
-      ))}
+      {legs.map((leg, i) => {
+        const stop = midpointStop(leg);
+        return (
+          <Marker key={i} position={[stop.location.lat, stop.location.lon]} icon={dotIcon(CATEGORY_COLORS[leg.category], 14)}>
+            <Popup>
+              <div className="text-sm text-slate-900">
+                <div className="font-semibold">{leg.label}</div>
+                <div>
+                  Mi {formatMiles(leg.startStop.cumulativeDistanceMeters)}–{formatMiles(leg.endStop.cumulativeDistanceMeters)}
+                </div>
+                <div>
+                  {formatEtaTime(leg.startStop.eta)}–{formatEtaTime(leg.endStop.eta)}
+                </div>
+                <div>{formatTemperatureRange(leg.minTemperatureC, leg.maxTemperatureC, unit)}</div>
+                {leg.maxPrecipitationMm > 0 && <div>up to {leg.maxPrecipitationMm.toFixed(1)} mm precip</div>}
+              </div>
+            </Popup>
+          </Marker>
+        );
+      })}
     </MapContainer>
   );
 }
