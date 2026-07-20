@@ -18,3 +18,33 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* Hover feedback linking a sidebar leg card to its map marker/polyline. */
+@keyframes leg-marker-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.4);
+  }
+}
+
+.leg-marker-pulse {
+  animation: leg-marker-pulse 1s ease-in-out infinite;
+  transform-origin: center;
+}
+
+@keyframes leg-line-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+
+.leg-line-pulse {
+  animation: leg-line-pulse 1s ease-in-out infinite;
+}

@@ -64,6 +64,8 @@ export default function Home() {
   const [stops, setStops] = useState<StopWithWeather[]>([]);
   const [isPlanning, setIsPlanning] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [selectedLegIndex, setSelectedLegIndex] = useState<number | null>(null);
+  const [hoveredLegIndex, setHoveredLegIndex] = useState<number | null>(null);
 
   const canPlan = origin !== null && destination !== null && !isPlanning;
 
@@ -102,6 +104,8 @@ export default function Home() {
     setRoute(null);
     setStops([]);
     setError(null);
+    setSelectedLegIndex(null);
+    setHoveredLegIndex(null);
   }
 
   async function handlePlanRoute() {
@@ -110,6 +114,8 @@ export default function Home() {
     setError(null);
     setRoute(null);
     setStops([]);
+    setSelectedLegIndex(null);
+    setHoveredLegIndex(null);
 
     try {
       const routeRes = await fetch("/api/route", {
@@ -229,7 +235,14 @@ export default function Home() {
           </div>
         )}
 
-        <WeatherLegList legs={legs} unit={unit} />
+        <WeatherLegList
+          legs={legs}
+          unit={unit}
+          selectedLegIndex={selectedLegIndex}
+          hoveredLegIndex={hoveredLegIndex}
+          onSelectLeg={setSelectedLegIndex}
+          onHoverLeg={setHoveredLegIndex}
+        />
       </aside>
 
       <main className="h-96 overflow-hidden rounded-lg border border-slate-200 lg:h-full lg:flex-1">
@@ -241,6 +254,9 @@ export default function Home() {
           legSegments={legSegments}
           onMapClick={handleMapClick}
           unit={unit}
+          selectedLegIndex={selectedLegIndex}
+          hoveredLegIndex={hoveredLegIndex}
+          onSelectLeg={setSelectedLegIndex}
         />
       </main>
     </div>

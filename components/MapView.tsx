@@ -6,33 +6,27 @@ import L from "leaflet";
 import type { LatLon } from "@/lib/providers/types";
 import type { WeatherLeg } from "@/lib/groupIntoLegs";
 import type { LegPolylineSegment } from "@/lib/legPolylineSegments";
-import type { WeatherCategory } from "@/lib/weatherCodes";
+import { WEATHER_CATEGORY_HEX_COLORS } from "@/lib/weatherCodes";
 import { formatTemperatureRange, type TemperatureUnit } from "@/lib/units";
 import { formatEtaTime, formatMiles } from "@/lib/format";
 
 // Leaflet's default marker icon references image paths that bundlers rewrite
 // unreliably, so every marker here uses an inline divIcon instead of L.icon.
-function dotIcon(color: string, size = 16) {
+function dotIcon(color: string, size = 16, options: { pulsing?: boolean; selected?: boolean } = {}) {
+  const { pulsing = false, selected = false } = options;
+  const finalSize = selected ? size + 6 : size;
+  const border = selected ? "3px solid #1d4ed8" : "2px solid white";
+  const className = pulsing ? "leg-marker-pulse" : "";
   return L.divIcon({
     className: "",
-    html: `<div style="background:${color};width:${size}px;height:${size}px;border-radius:50%;border:2px solid white;box-shadow:0 0 2px rgba(0,0,0,0.5)"></div>`,
-    iconSize: [size, size],
-    iconAnchor: [size / 2, size / 2],
+    html: `<div class="${className}" style="background:${color};width:${finalSize}px;height:${finalSize}px;border-radius:50%;border:${border};box-shadow:0 0 4px rgba(0,0,0,0.6)"></div>`,
+    iconSize: [finalSize, finalSize],
+    iconAnchor: [finalSize / 2, finalSize / 2],
   });
 }
 
 const originIcon = dotIcon("#16a34a");
 const destinationIcon = dotIcon("#dc2626");
-
-const CATEGORY_COLORS: Record<WeatherCategory, string> = {
-  clear: "#f59e0b",
-  cloudy: "#64748b",
-  fog: "#71717a",
-  drizzle: "#0ea5e9",
-  rain: "#2563eb",
-  snow: "#6366f1",
-  thunderstorm: "#9333ea",
-};
 
 interface MapViewProps {
   origin: LatLon | null;
@@ -42,6 +36,9 @@ interface MapViewProps {
   legSegments: LegPolylineSegment[];
   onMapClick: (location: LatLon) => void;
   unit: TemperatureUnit;
+  selectedLegIndex: number | null;
+  hoveredLegIndex: number | null;
+  onSelectLeg: (index: number | null) => void;
 }
 
 function ClickHandler({ onMapClick }: { onMapClick: (location: LatLon) => void }) {
@@ -132,7 +129,18 @@ function midpointStop(leg: WeatherLeg) {
 
 const DEFAULT_CENTER: [number, number] = [39.8283, -98.5795]; // roughly center of the contiguous US
 
-export function MapView({ origin, destination, routeGeometry, legs, legSegments, onMapClick, unit }: MapViewProps) {
+export function MapView({
+  origin,
+  destination,
+  routeGeometry,
+  legs,
+  legSegments,
+  onMapClick,
+  unit,
+  selectedLegIndex,
+  hoveredLegIndex,
+  onSelectLeg,
+}: MapViewProps) {
   const boundsPoints = routeGeometry.length > 0 ? routeGeometry : [origin, destination].filter(Boolean) as LatLon[];
 
   return (
@@ -147,15 +155,24 @@ export function MapView({ origin, destination, routeGeometry, legs, legSegments,
       {boundsPoints.length > 1 && <FitBounds points={boundsPoints} />}
 
       {legSegments.length > 0 ? (
-        legSegments.map((segment, i) =>
-          segment.positions.length > 1 ? (
+        legSegments.map((segment, i) => {
+          const isPulsing = hoveredLegIndex === i;
+          return segment.positions.length > 1 ? (
+            // Leaflet only applies pathOptions.className when the path element
+            // is first created, not on later style updates — keying on the
+            // pulse state forces a remount so the class actually takes effect.
             <Polyline
-              key={i}
+              key={`${i}-${isPulsing}`}
               positions={segment.positions.map((p) => [p.lat, p.lon])}
-              pathOptions={{ color: CATEGORY_COLORS[segment.category], weight: 5 }}
+              eventHandlers={{ click: () => onSelectLeg(selectedLegIndex === i ? null : i) }}
+              pathOptions={{
+                color: segment.color,
+                weight: selectedLegIndex === i || isPulsing ? 9 : 5,
+                className: isPulsing ? "leg-line-pulse" : undefined,
+              }}
             />
-          ) : null,
-        )
+          ) : null;
+        })
       ) : routeGeometry.length > 1 ? (
         <Polyline positions={routeGeometry.map((p) => [p.lat, p.lon])} pathOptions={{ color: "#2563eb", weight: 4 }} />
       ) : null}
@@ -173,8 +190,15 @@ export function MapView({ origin, destination, routeGeometry, legs, legSegments,
 
       {legs.map((leg, i) => {
         const stop = midpointStop(leg);
+        const isSelected = selectedLegIndex === i;
+        const isHovered = hoveredLegIndex === i;
         return (
-          <Marker key={i} position={[stop.location.lat, stop.location.lon]} icon={dotIcon(CATEGORY_COLORS[leg.category], 14)}>
+          <Marker
+            key={i}
+            position={[stop.location.lat, stop.location.lon]}
+            icon={dotIcon(WEATHER_CATEGORY_HEX_COLORS[leg.category], 14, { pulsing: isHovered, selected: isSelected })}
+            eventHandlers={{ click: () => onSelectLeg(isSelected ? null : i) }}
+          >
             <Popup>
               <div className="text-sm text-slate-900">
                 <div className="font-semibold">{leg.label}</div>
