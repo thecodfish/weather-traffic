@@ -6,13 +6,43 @@ import { AddressAutocomplete } from "@/components/AddressAutocomplete";
 import { MapsLinkInput } from "@/components/MapsLinkInput";
 import { WeatherStopList } from "@/components/WeatherStopList";
 import type { StopWithWeather } from "@/components/types";
-import { sampleRoute } from "@/lib/sampleRoute";
+import { mapWithConcurrency } from "@/lib/mapWithConcurrency";
+import { sampleRoute, type SampledPoint } from "@/lib/sampleRoute";
 import type { GeocodeResult, LatLon, NormalizedRoute, ParsedRouteLink } from "@/lib/providers/types";
 import type { TemperatureUnit } from "@/lib/units";
 
 const MIN_STOPS = 2;
-const MAX_STOPS = 20;
+const MAX_STOPS = 50;
 const DEFAULT_STOPS = 20;
+
+// Cap how many weather lookups run at once, and retry a stop once before
+// giving up — large stop counts shouldn't burst dozens of simultaneous
+// requests at the weather API in one shot.
+const WEATHER_CONCURRENCY = 6;
+const WEATHER_RETRY_DELAY_MS = 500;
+
+async function fetchWeatherForStop(stop: SampledPoint, attempt = 0): Promise<StopWithWeather> {
+  try {
+    const weatherRes = await fetch("/api/weather", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        lat: stop.location.lat,
+        lon: stop.location.lon,
+        targetTime: stop.eta.toISOString(),
+      }),
+    });
+    const weatherBody = await weatherRes.json();
+    if (!weatherRes.ok) throw new Error(weatherBody.error ?? "Weather lookup failed");
+    return { ...stop, weather: weatherBody };
+  } catch (err) {
+    if (attempt < 1) {
+      await new Promise((resolve) => setTimeout(resolve, WEATHER_RETRY_DELAY_MS));
+      return fetchWeatherForStop(stop, attempt + 1);
+    }
+    return { ...stop, weatherError: err instanceof Error ? err.message : "Unknown error" };
+  }
+}
 
 const MapView = dynamic(() => import("@/components/MapView").then((m) => m.MapView), {
   ssr: false,
@@ -101,26 +131,7 @@ export default function Home() {
       const sampled = sampleRoute(normalizedRoute, departureTime, { maxSamples: maxStops });
       setStops(sampled);
 
-      const withWeather = await Promise.all(
-        sampled.map(async (stop): Promise<StopWithWeather> => {
-          try {
-            const weatherRes = await fetch("/api/weather", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                lat: stop.location.lat,
-                lon: stop.location.lon,
-                targetTime: stop.eta.toISOString(),
-              }),
-            });
-            const weatherBody = await weatherRes.json();
-            if (!weatherRes.ok) throw new Error(weatherBody.error ?? "Weather lookup failed");
-            return { ...stop, weather: weatherBody };
-          } catch (err) {
-            return { ...stop, weatherError: err instanceof Error ? err.message : "Unknown error" };
-          }
-        }),
-      );
+      const withWeather = await mapWithConcurrency(sampled, WEATHER_CONCURRENCY, fetchWeatherForStop);
       setStops(withWeather);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
