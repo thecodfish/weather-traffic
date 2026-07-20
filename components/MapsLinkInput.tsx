@@ -41,7 +41,7 @@ export function MapsLinkInput({ onResolved }: MapsLinkInputProps) {
       <div className="mt-1 flex gap-2">
         <input
           type="text"
-          className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+          className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:outline-none"
           placeholder="https://maps.app.goo.gl/..."
           value={url}
           onChange={(e) => setUrl(e.target.value)}
