@@ -4,16 +4,13 @@ import dynamic from "next/dynamic";
 import { useMemo, useState } from "react";
 import { AddressAutocomplete } from "@/components/AddressAutocomplete";
 import { MapsLinkInput } from "@/components/MapsLinkInput";
-import { WeatherStopList } from "@/components/WeatherStopList";
-import type { StopWithWeather } from "@/components/types";
+import { WeatherLegList } from "@/components/WeatherLegList";
+import { groupIntoLegs } from "@/lib/groupIntoLegs";
+import { buildLegPolylineSegments } from "@/lib/legPolylineSegments";
 import { mapWithConcurrency } from "@/lib/mapWithConcurrency";
-import { sampleRoute, type SampledPoint } from "@/lib/sampleRoute";
+import { computeSampleCount, sampleRoute, type SampledPoint, type StopWithWeather } from "@/lib/sampleRoute";
 import type { GeocodeResult, LatLon, NormalizedRoute, ParsedRouteLink } from "@/lib/providers/types";
 import type { TemperatureUnit } from "@/lib/units";
-
-const MIN_STOPS = 2;
-const MAX_STOPS = 50;
-const DEFAULT_STOPS = 20;
 
 // Cap how many weather lookups run at once, and retry a stop once before
 // giving up — large stop counts shouldn't burst dozens of simultaneous
@@ -62,7 +59,6 @@ export default function Home() {
   const [origin, setOrigin] = useState<LatLon | null>(null);
   const [destination, setDestination] = useState<LatLon | null>(null);
   const [departureValue, setDepartureValue] = useState(() => toDatetimeLocalValue(new Date()));
-  const [maxStops, setMaxStops] = useState(DEFAULT_STOPS);
   const [unit, setUnit] = useState<TemperatureUnit>("F");
   const [route, setRoute] = useState<NormalizedRoute | null>(null);
   const [stops, setStops] = useState<StopWithWeather[]>([]);
@@ -128,7 +124,8 @@ export default function Home() {
       setRoute(normalizedRoute);
 
       const departureTime = new Date(departureValue);
-      const sampled = sampleRoute(normalizedRoute, departureTime, { maxSamples: maxStops });
+      const maxSamples = computeSampleCount(normalizedRoute.durationSeconds);
+      const sampled = sampleRoute(normalizedRoute, departureTime, { maxSamples });
       setStops(sampled);
 
       const withWeather = await mapWithConcurrency(sampled, WEATHER_CONCURRENCY, fetchWeatherForStop);
@@ -141,6 +138,8 @@ export default function Home() {
   }
 
   const routeGeometry = useMemo(() => route?.geometry ?? [], [route]);
+  const legs = useMemo(() => groupIntoLegs(stops), [stops]);
+  const legSegments = useMemo(() => (route ? buildLegPolylineSegments(route, legs) : []), [route, legs]);
 
   return (
     <div className="flex flex-col gap-4 p-4 lg:h-screen lg:flex-row lg:overflow-hidden">
@@ -181,41 +180,21 @@ export default function Home() {
           />
         </div>
 
-        <div className="flex gap-4">
-          <div className="flex-1">
-            <label className="block text-sm font-medium text-slate-700">
-              Number of stops ({MIN_STOPS}–{MAX_STOPS})
-            </label>
-            <input
-              type="number"
-              min={MIN_STOPS}
-              max={MAX_STOPS}
-              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:outline-none"
-              value={maxStops}
-              onChange={(e) => {
-                const parsed = parseInt(e.target.value, 10);
-                if (Number.isNaN(parsed)) return;
-                setMaxStops(Math.min(MAX_STOPS, Math.max(MIN_STOPS, parsed)));
-              }}
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-slate-700">Units</label>
-            <div className="mt-1 flex overflow-hidden rounded-md border border-slate-300">
-              {(["F", "C"] as const).map((option) => (
-                <button
-                  key={option}
-                  type="button"
-                  onClick={() => setUnit(option)}
-                  className={`px-3 py-2 text-sm font-medium ${
-                    unit === option ? "bg-blue-600 text-white" : "bg-white text-slate-600 hover:bg-slate-50"
-                  }`}
-                >
-                  °{option}
-                </button>
-              ))}
-            </div>
+        <div>
+          <label className="block text-sm font-medium text-slate-700">Units</label>
+          <div className="mt-1 flex w-fit overflow-hidden rounded-md border border-slate-300">
+            {(["F", "C"] as const).map((option) => (
+              <button
+                key={option}
+                type="button"
+                onClick={() => setUnit(option)}
+                className={`px-3 py-2 text-sm font-medium ${
+                  unit === option ? "bg-blue-600 text-white" : "bg-white text-slate-600 hover:bg-slate-50"
+                }`}
+              >
+                °{option}
+              </button>
+            ))}
           </div>
         </div>
 
@@ -250,7 +229,7 @@ export default function Home() {
           </div>
         )}
 
-        <WeatherStopList stops={stops} unit={unit} />
+        <WeatherLegList legs={legs} unit={unit} />
       </aside>
 
       <main className="h-96 overflow-hidden rounded-lg border border-slate-200 lg:h-full lg:flex-1">
@@ -258,7 +237,8 @@ export default function Home() {
           origin={origin}
           destination={destination}
           routeGeometry={routeGeometry}
-          stops={stops}
+          legs={legs}
+          legSegments={legSegments}
           onMapClick={handleMapClick}
           unit={unit}
         />
