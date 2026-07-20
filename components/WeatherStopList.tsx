@@ -22,7 +22,7 @@ export function WeatherStopList({ stops, unit }: WeatherStopListProps) {
         return (
           <li
             key={i}
-            className={`flex items-center justify-between gap-3 rounded-md border px-3 py-2 text-sm ${
+            className={`flex items-center justify-between gap-3 rounded-md border px-3 py-2 text-sm text-slate-900 ${
               info ? WEATHER_CATEGORY_STYLES[info.category] : "border-slate-200 bg-white"
             }`}
           >

@@ -144,7 +144,7 @@ export function MapView({ origin, destination, routeGeometry, stops, onMapClick,
           }
         >
           <Popup>
-            <div className="text-sm">
+            <div className="text-sm text-slate-900">
               <div className="font-semibold">ETA {stop.eta.toLocaleString()}</div>
               {stop.weather ? (
                 <>

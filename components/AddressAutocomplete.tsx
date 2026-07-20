@@ -57,7 +57,7 @@ export function AddressAutocomplete({
       <label className="block text-sm font-medium text-slate-700">{label}</label>
       <input
         type="text"
-        className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+        className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:outline-none"
         placeholder={placeholder}
         value={value}
         onChange={(e) => {
@@ -79,7 +79,7 @@ export function AddressAutocomplete({
             <li key={i}>
               <button
                 type="button"
-                className="block w-full px-3 py-2 text-left text-sm hover:bg-blue-50"
+                className="block w-full px-3 py-2 text-left text-sm text-slate-900 hover:bg-blue-50"
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={() => {
                   onSelect(result);

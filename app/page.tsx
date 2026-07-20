@@ -164,7 +164,7 @@ export default function Home() {
           <label className="block text-sm font-medium text-slate-700">Departure time</label>
           <input
             type="datetime-local"
-            className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+            className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:outline-none"
             value={departureValue}
             onChange={(e) => setDepartureValue(e.target.value)}
           />
@@ -179,7 +179,7 @@ export default function Home() {
               type="number"
               min={MIN_STOPS}
               max={MAX_STOPS}
-              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none"
+              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:border-blue-500 focus:outline-none"
               value={maxStops}
               onChange={(e) => {
                 const parsed = parseInt(e.target.value, 10);
