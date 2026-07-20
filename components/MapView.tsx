@@ -93,6 +93,25 @@ function RadarLayer() {
   );
 }
 
+/**
+ * Leaflet reads its container's size once at mount and caches it. If the
+ * container's flex/grid parent hasn't resolved a real height yet at that
+ * moment (a timing race that's more common on desktop, where nothing like an
+ * address-bar collapse triggers a follow-up window resize), the map is stuck
+ * rendered at 0 height. Re-checking on any container resize keeps it in sync.
+ */
+function InvalidateSizeOnResize() {
+  const map = useMap();
+  useEffect(() => {
+    const container = map.getContainer();
+    map.invalidateSize();
+    const observer = new ResizeObserver(() => map.invalidateSize());
+    observer.observe(container);
+    return () => observer.disconnect();
+  }, [map]);
+  return null;
+}
+
 function FitBounds({ points }: { points: LatLon[] }) {
   const map = useMap();
   useEffect(() => {
@@ -115,6 +134,7 @@ export function MapView({ origin, destination, routeGeometry, stops, onMapClick,
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
       <RadarLayer />
+      <InvalidateSizeOnResize />
       <ClickHandler onMapClick={onMapClick} />
       {boundsPoints.length > 1 && <FitBounds points={boundsPoints} />}
 

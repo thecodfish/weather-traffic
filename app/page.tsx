@@ -132,7 +132,7 @@ export default function Home() {
   const routeGeometry = useMemo(() => route?.geometry ?? [], [route]);
 
   return (
-    <div className="flex flex-1 flex-col gap-4 p-4 lg:h-screen lg:flex-row lg:overflow-hidden">
+    <div className="flex flex-col gap-4 p-4 lg:h-screen lg:flex-row lg:overflow-hidden">
       <aside className="flex w-full flex-col gap-4 lg:w-96 lg:overflow-y-auto lg:pr-2">
         <div>
           <h1 className="text-xl font-semibold text-slate-900">Route Weather Arrival</h1>
@@ -242,7 +242,7 @@ export default function Home() {
         <WeatherStopList stops={stops} unit={unit} />
       </aside>
 
-      <main className="h-96 flex-1 overflow-hidden rounded-lg border border-slate-200 lg:h-full">
+      <main className="h-96 overflow-hidden rounded-lg border border-slate-200 lg:h-full lg:flex-1">
         <MapView
           origin={origin}
           destination={destination}
