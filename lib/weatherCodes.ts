@@ -57,3 +57,14 @@ export const WEATHER_CATEGORY_STYLES: Record<WeatherCategory, string> = {
   snow: "bg-indigo-50 text-indigo-900 border-indigo-300",
   thunderstorm: "bg-purple-100 text-purple-900 border-purple-300",
 };
+
+/** Hex colors used for map markers/polylines — one per category, for the map's own dark-on-tile rendering. */
+export const WEATHER_CATEGORY_HEX_COLORS: Record<WeatherCategory, string> = {
+  clear: "#f59e0b",
+  cloudy: "#64748b",
+  fog: "#71717a",
+  drizzle: "#0ea5e9",
+  rain: "#2563eb",
+  snow: "#6366f1",
+  thunderstorm: "#9333ea",
+};

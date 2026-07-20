@@ -3,6 +3,8 @@ import { buildLegPolylineSegments } from "./legPolylineSegments";
 import type { NormalizedRoute } from "./providers/types";
 import type { WeatherLeg } from "./groupIntoLegs";
 import type { StopWithWeather } from "./sampleRoute";
+import { WEATHER_CATEGORY_HEX_COLORS } from "./weatherCodes";
+import { blendHexColors } from "./color";
 
 // 5 steps -> geometry[0..5], step i location === geometry[i+1] (matches osrm.ts convention)
 function fixtureRoute(): NormalizedRoute {
@@ -70,14 +72,61 @@ describe("buildLegPolylineSegments", () => {
     expect(firstEnd).toEqual(secondStart);
   });
 
-  it("carries the leg's category through to the segment", () => {
+  it("colors a normal (multi-point) segment by the leg's own category", () => {
     const route = fixtureRoute();
     const leg = { ...legFrom(0, 2), category: "rain" as const };
     const segments = buildLegPolylineSegments(route, [leg]);
-    expect(segments[0].category).toBe("rain");
+    expect(segments[0].color).toBe(WEATHER_CATEGORY_HEX_COLORS.rain);
   });
 
   it("returns an empty array for no legs", () => {
     expect(buildLegPolylineSegments(fixtureRoute(), [])).toEqual([]);
+  });
+
+  describe("single-sample legs", () => {
+    it("borrows the previous step's point so a 1-sample leg still gets a visible line", () => {
+      const route = fixtureRoute();
+      // leg at stepIndex 2 only (start === end) -> degenerate on its own
+      const segments = buildLegPolylineSegments(route, [legFrom(0, 0), legFrom(2, 2)]);
+
+      expect(segments[1].positions).toHaveLength(2);
+      expect(segments[1].positions).toEqual([route.steps[1].location, route.steps[2].location]);
+    });
+
+    it("blends the color with the previous leg's category", () => {
+      const route = fixtureRoute();
+      const clearLeg = { ...legFrom(0, 0), category: "clear" as const };
+      const rainLeg = { ...legFrom(1, 1), category: "rain" as const };
+      const segments = buildLegPolylineSegments(route, [clearLeg, rainLeg]);
+
+      expect(segments[1].color).toBe(
+        blendHexColors(WEATHER_CATEGORY_HEX_COLORS.rain, WEATHER_CATEGORY_HEX_COLORS.clear),
+      );
+    });
+
+    it("uses its own color with no blending when it's the first leg", () => {
+      const route = fixtureRoute();
+      const leg = { ...legFrom(2, 2), category: "snow" as const };
+      const segments = buildLegPolylineSegments(route, [leg]);
+
+      expect(segments[0].color).toBe(WEATHER_CATEGORY_HEX_COLORS.snow);
+    });
+
+    it("borrows route.geometry[0] when the degenerate leg is right at stepIndex 0", () => {
+      const route = fixtureRoute();
+      const firstLeg = { ...legFrom(-1, -1), category: "clear" as const };
+      const secondLeg = { ...legFrom(0, 0), category: "fog" as const };
+      const segments = buildLegPolylineSegments(route, [firstLeg, secondLeg]);
+
+      expect(segments[1].positions).toEqual([route.geometry[0], route.steps[0].location]);
+    });
+
+    it("stays a single point with no borrowing when it's the very first origin-only sample", () => {
+      const route = fixtureRoute();
+      const leg = { ...legFrom(-1, -1), category: "clear" as const };
+      const segments = buildLegPolylineSegments(route, [leg]);
+
+      expect(segments[0].positions).toEqual([route.geometry[0]]);
+    });
   });
 });
