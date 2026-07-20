@@ -47,7 +47,9 @@ export function WeatherStopList({ stops, unit }: WeatherStopListProps) {
                   <div className="text-xs">{info?.label}</div>
                 </>
               ) : stop.weatherError ? (
-                <div className="text-xs text-red-600">Weather unavailable</div>
+                <div className="text-xs text-red-600" title={stop.weatherError}>
+                  Weather unavailable
+                </div>
               ) : (
                 <div className="text-xs opacity-70">Loading…</div>
               )}

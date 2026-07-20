@@ -89,6 +89,7 @@ function RadarLayer() {
       attribution='Radar &copy; <a href="https://www.rainviewer.com/">RainViewer</a>'
       url={tileUrl}
       opacity={0.5}
+      maxNativeZoom={7}
     />
   );
 }
@@ -174,7 +175,7 @@ export function MapView({ origin, destination, routeGeometry, stops, onMapClick,
                   <div>{Math.round(stop.weather.windSpeedKmh)} km/h wind</div>
                 </>
               ) : stop.weatherError ? (
-                <div className="text-red-600">Weather unavailable</div>
+                <div className="text-red-600">Weather unavailable: {stop.weatherError}</div>
               ) : (
                 <div>Loading weather…</div>
               )}
