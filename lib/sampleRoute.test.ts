@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { sampleRoute } from "./sampleRoute";
+import { computeSampleCount, sampleRoute } from "./sampleRoute";
 import type { NormalizedRoute } from "./providers/types";
 
 /** A synthetic 60-minute route with no network calls, one step per minute. */
@@ -129,6 +129,32 @@ describe("sampleRoute", () => {
     for (let i = 1; i < samples.length; i++) {
       expect(samples[i].stepIndex).toBeGreaterThan(samples[i - 1].stepIndex);
       expect(route.steps[samples[i].stepIndex].location).toEqual(samples[i].location);
+    }
+  });
+});
+
+describe("computeSampleCount", () => {
+  it("floors at 2 samples for a very short route", () => {
+    expect(computeSampleCount(30)).toBe(2);
+  });
+
+  it("produces one sample roughly every 2 minutes", () => {
+    // 20 minutes / 2-minute interval + 1 = 11
+    expect(computeSampleCount(20 * 60)).toBe(11);
+  });
+
+  it("caps at 50 for a route long enough to otherwise exceed it", () => {
+    // ~98 minutes is exactly at the 50-sample threshold; well past it should still cap at 50
+    expect(computeSampleCount(98 * 60)).toBe(50);
+    expect(computeSampleCount(10 * 60 * 60)).toBe(50); // a 10-hour drive
+  });
+
+  it("is monotonically non-decreasing as duration grows", () => {
+    let previous = computeSampleCount(0);
+    for (let minutes = 1; minutes <= 200; minutes++) {
+      const current = computeSampleCount(minutes * 60);
+      expect(current).toBeGreaterThanOrEqual(previous);
+      previous = current;
     }
   });
 });

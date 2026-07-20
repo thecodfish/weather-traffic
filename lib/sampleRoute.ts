@@ -22,6 +22,24 @@ export interface SampleRouteOptions {
 
 const DEFAULT_MAX_SAMPLES = 20;
 
+/** Target spacing between samples, in seconds of drive time. */
+export const SAMPLE_INTERVAL_SECONDS = 2 * 60;
+/** Hard ceiling on sample count regardless of route length, to bound weather-API load. */
+export const MAX_SAMPLES_CAP = 50;
+
+/**
+ * Derives how many samples a route should get from its duration alone: one
+ * every SAMPLE_INTERVAL_SECONDS, floored at 2 (start/end) and capped at
+ * MAX_SAMPLES_CAP. This is what makes sample count fully automatic — no user
+ * control over it, so granularity scales with the route instead of a manual
+ * knob that stopped mattering once weather is displayed as merged legs
+ * rather than one card per point.
+ */
+export function computeSampleCount(durationSeconds: number): number {
+  const raw = Math.ceil(durationSeconds / SAMPLE_INTERVAL_SECONDS) + 1;
+  return Math.min(MAX_SAMPLES_CAP, Math.max(2, raw));
+}
+
 /**
  * Picks `maxSamples` evenly time-spaced points along a route (always including
  * origin and destination) and attaches each one's ETA given a departure time.
